@@ -1,0 +1,37 @@
+name: Keep Render Alive
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # every 10 minutes (cron runs in UTC)
+  workflow_dispatch:         # lets you run it manually from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: keep-render-alive
+      cancel-in-progress: true
+    steps:
+      - name: Ping Render app with retries
+        run: |
+          set +e  # don't fail the job on curl errors
+          URL="https://kp-remodeling-api.onrender.com/health"  # replace if needed
+          echo "Pinging $URL ..."
+          for i in 1 2 3 4 5; do
+            # try HEAD first (fast) then GET (warms app)
+            head_code=$(curl -I --location --max-time 30 -o /dev/null -w "%{http_code}" "$URL" || echo "000")
+            echo "Attempt $i: HEAD -> HTTP $head_code"
+            get_code=$(curl --location --max-time 60 -o /dev/null -w "%{http_code}" "$URL" || echo "000")
+            echo "Attempt $i: GET  -> HTTP $get_code"
+            # consider any 2xx good
+            if [ "${get_code:0:1}" = "2" ]; then
+              echo "Healthy (HTTP $get_code)."
+              exit 0
+            fi
+            # backoff between tries
+            sleep $((i * 5))
+          done
+
+          echo "Still not 2xx after retries; keeping warm anyway."
+          exit 0
