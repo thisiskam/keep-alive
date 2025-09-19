@@ -16,7 +16,7 @@ jobs:
       - name: Ping Render app
         run: |
           set -e
-          URL="https://kp-remodeling-api.onrender.com"   # <-- replace if needed
+          URL="https://kp-remodeling-api.onrender.com/health"   # <-- replace if needed
           echo "Pinging $URL..."
           curl --silent --show-error --fail --location --max-time 20 "$URL" > /dev/null
           echo "OK"
